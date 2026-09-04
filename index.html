@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V 的数字花园</title>
+  <meta name="description" content="V 的线上知识库、作品展示与成长记录站">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="site-title" href="#/" id="site-title">V 的数字花园</a>
+      <nav class="site-nav" id="site-nav">
+        <a href="#/" data-route="/">首页</a>
+        <a href="#/articles" data-route="/articles">文章</a>
+        <a href="#/videos" data-route="/videos">视频</a>
+        <a href="#/progress" data-route="/progress">进度看板</a>
+        <a href="#/search" data-route="/search">搜索</a>
+        <a href="#/about" data-route="/about">关于我</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app" class="container"></main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span id="footer-text">© V · 用静态页面种一座花园</span>
+    </div>
+  </footer>
+
+  <!-- 数据层：先于应用脚本加载 -->
+  <script src="js/data.js"></script>
+  <script src="content/articles.js"></script>
+  <script src="content/videos.js"></script>
+  <script src="content/progress.js"></script>
+
+  <!-- 应用层 -->
+  <script src="js/markdown.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
