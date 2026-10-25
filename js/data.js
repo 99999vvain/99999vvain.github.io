@@ -18,8 +18,11 @@ window.SITE = {
   interests: ["理工科", "学习记录", "随笔", "项目记录"],
 
   // 联系方式（关于页展示，留空字符串则不显示）
+  // 邮箱刻意拆成两段存，渲染时才拼起来：静态页里的完整明文邮箱是爬虫最爱抓的东西。
+  // 想改邮箱就分别改 emailUser / emailDomain 两段，不要写成一整串。
   contact: {
-    email: "anzong139@gmail.com",
+    emailUser: "anzong139",
+    emailDomain: "gmail.com",
     github: "https://github.com/99999vvain",
     bilibili: "",
     mp: ""

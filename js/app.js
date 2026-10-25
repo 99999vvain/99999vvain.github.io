@@ -443,8 +443,14 @@
   /* ---------- 关于 ---------- */
   function pageAbout() {
     var c = SITE.contact || {};
+
+    // 邮箱两段拼接：让源码里不出现完整地址，降低被爬虫收集的概率
+    var email = c.emailUser && c.emailDomain
+      ? c.emailUser + String.fromCharCode(64) + c.emailDomain
+      : (c.email || "");
+
     var rows = [
-      c.email ? '<li><span class="k">Email</span><span><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a></span></li>" : "",
+      email ? '<li><span class="k">Email</span><span><a href="mailto:' + esc(email) + '">' + esc(email) + "</a></span></li>" : "",
       c.github ? '<li><span class="k">GitHub</span><span><a href="' + esc(c.github) + '" target="_blank" rel="noopener">' + esc(c.github) + "</a></span></li>" : "",
       c.bilibili ? '<li><span class="k">Bilibili</span><span><a href="' + esc(c.bilibili) + '" target="_blank" rel="noopener">' + esc(c.bilibili) + "</a></span></li>" : "",
       c.mp ? '<li><span class="k">公众号</span><span>' + esc(c.mp) + "</span></li>" : ""
