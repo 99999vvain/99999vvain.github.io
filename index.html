@@ -5,14 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>V 的数字花园</title>
   <meta name="description" content="V 的线上知识库、作品展示与成长记录站">
-  <link rel="stylesheet" href="css/style.css">
+  <meta name="theme-color" content="#f6f4ee">
+  <link rel="stylesheet" href="css/style.css?v=20261025">
 </head>
 <body>
+
+  <a class="skip-link" href="#app">跳到正文</a>
 
   <header class="site-header">
     <div class="container header-inner">
       <a class="site-title" href="#/" id="site-title">V 的数字花园</a>
-      <nav class="site-nav" id="site-nav">
+      <nav class="site-nav" id="site-nav" aria-label="主导航">
         <a href="#/" data-route="/">首页</a>
         <a href="#/articles" data-route="/articles">文章</a>
         <a href="#/videos" data-route="/videos">视频</a>
@@ -23,22 +26,23 @@
     </div>
   </header>
 
-  <main id="app" class="container"></main>
+  <main id="app" tabindex="-1"></main>
 
   <footer class="site-footer">
-    <div class="container">
+    <div class="container footer-inner">
       <span id="footer-text">© V · 用静态页面种一座花园</span>
+      <span>Built with plain HTML / CSS / JS</span>
     </div>
   </footer>
 
   <!-- 数据层：先于应用脚本加载 -->
-  <script src="js/data.js"></script>
-  <script src="content/articles.js"></script>
-  <script src="content/videos.js"></script>
-  <script src="content/progress.js"></script>
+  <script src="js/data.js?v=20261025"></script>
+  <script src="content/articles.js?v=20261025"></script>
+  <script src="content/videos.js?v=20261025"></script>
+  <script src="content/progress.js?v=20261025"></script>
 
   <!-- 应用层 -->
-  <script src="js/markdown.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/markdown.js?v=20261025"></script>
+  <script src="js/app.js?v=20261025"></script>
 </body>
 </html>

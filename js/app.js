@@ -8,6 +8,9 @@
      #/progress        进度看板
      #/search          搜索
      #/about           关于我
+
+   版式约定（编辑式）：日期等宽居左、标题衬线、标签居右，
+   全部用发丝线分隔，不用卡片阴影。
    ============================================================ */
 (function () {
   "use strict";
@@ -27,24 +30,102 @@
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function byDateDesc(a, b) { return String(b.date || "").localeCompare(String(a.date || "")); }
-  function byDateAsc(a, b) { return String(a.date || "").localeCompare(String(b.date || "")); }
+  function dots(d) { return String(d || "").replace(/-/g, "."); }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
 
-  function tagChip(tag) {
-    return '<a class="tag" href="#/articles?tag=' + encodeURIComponent(tag) + '">' + esc(tag) + "</a>";
-  }
-  function tagsHtml(tags) {
-    return (tags || []).map(tagChip).join("");
+  function readingWords(text) {
+    return String(text || "").replace(/[#>*`\-\[\]()\|\s]/g, "").length;
   }
 
-  /* ---------- 组件 ---------- */
-  function articleCard(a) {
-    return '<article class="card article-card">' +
-      '<div class="card-meta">' + esc(a.date) + "</div>" +
-      '<h3 class="card-title"><a href="#/article/' + encodeURIComponent(a.slug) + '">' +
-        esc(a.title) + "</a></h3>" +
-      (a.summary ? '<p class="card-summary">' + esc(a.summary) + "</p>" : "") +
-      '<div class="card-tags">' + tagsHtml(a.tags) + "</div>" +
-      "</article>";
+  /* ---------- 动效：尊重系统减少动效设置 ---------- */
+  var motionQuery = window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)")
+    : null;
+
+  function reducedMotion() {
+    return !!(motionQuery && motionQuery.matches);
+  }
+
+  var REVEAL_SELECTOR = [
+    ".page-kicker", ".page-title", ".page-sub", ".hero", ".section-head",
+    ".filter-bar", ".entry", ".video-card", ".board-summary", ".record",
+    ".post-head", ".post-body", ".about-block", ".search-input", ".search-hint"
+  ].join(",");
+
+  // 按 DOM 顺序做阶梯入场，最多 8 级，避免长列表无限拖延
+  function revealContent() {
+    if (reducedMotion()) return;
+    var nodes = app.querySelectorAll(REVEAL_SELECTOR);
+    for (var k = 0; k < nodes.length; k++) {
+      nodes[k].style.setProperty("--i", Math.min(k, 8));
+      nodes[k].classList.add("reveal");
+    }
+  }
+
+  var barObserver = null;
+
+  // 进度条只在进入视口时从 0 长到目标值；减少动效时保持最终宽度
+  function animateBars() {
+    if (barObserver) { barObserver.disconnect(); barObserver = null; }
+    if (reducedMotion()) return;
+    if (typeof window.IntersectionObserver !== "function") return;
+
+    var bars = app.querySelectorAll(".bar > span");
+    if (!bars.length) return;
+
+    barObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        el.style.transition = "width 640ms cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.width = el.getAttribute("data-w") || "0%";
+        barObserver.unobserve(el);
+      });
+    }, { threshold: 0.25 });
+
+    for (var k = 0; k < bars.length; k++) {
+      var el = bars[k];
+      el.setAttribute("data-w", el.style.width || "0%");
+      el.style.transition = "none";
+      el.style.width = "0%";
+      barObserver.observe(el);
+    }
+  }
+
+  function tagSpans(tags) {
+    return (tags || []).map(function (t) {
+      return '<span class="tag">' + esc(t) + "</span>";
+    }).join("");
+  }
+
+  function tagLinks(tags, activeTag) {
+    return (tags || []).map(function (t) {
+      return '<a class="tag' + (t === activeTag ? " on" : "") +
+        '" href="#/articles?tag=' + encodeURIComponent(t) + '">' + esc(t) + "</a>";
+    }).join("");
+  }
+
+  /* ---------- 组件：条目行 ---------- */
+  function entryRow(item) {
+    var isVideo = item.kind === "video";
+    var href = isVideo
+      ? (item.type === "bilibili"
+          ? "https://www.bilibili.com/video/" + item.bvid
+          : item.url)
+      : "#/article/" + encodeURIComponent(item.slug);
+    var external = isVideo ? ' target="_blank" rel="noopener"' : "";
+
+    return '<a class="entry" href="' + esc(href) + '"' + external + ">" +
+      '<div class="entry-aside">' +
+        '<time class="entry-date" datetime="' + esc(item.date || "") + '">' + esc(dots(item.date)) + "</time>" +
+        (isVideo ? '<span class="kind">视频</span>' : "") +
+      "</div>" +
+      '<div class="entry-body">' +
+        '<h3 class="entry-title">' + esc(item.title) + "</h3>" +
+        (item.summary ? '<p class="entry-summary">' + esc(item.summary) + "</p>" : "") +
+      "</div>" +
+      '<div class="entry-tags">' + tagSpans(item.tags) + "</div>" +
+    "</a>";
   }
 
   function setDocTitle(t) {
@@ -59,55 +140,58 @@
     }
   }
 
-  /* ---------- 页面：首页 ---------- */
+  /* ---------- 首页 ---------- */
   function pageHome() {
-    // 最近更新 = 文章 + 视频 按日期取前 3
     var feed = ARTICLES.map(function (a) {
-      return { date: a.date, html: articleCard(a) };
+      return { date: a.date, item: a };
     }).concat(VIDEOS.map(function (v) {
-      return { date: v.date, html: videoCardLite(v) };
-    })).sort(function (x, y) { return String(y.date).localeCompare(String(x.date)); }).slice(0, 3);
+      return { date: v.date, item: v, kind: "video" };
+    })).sort(function (x, y) {
+      return String(y.date).localeCompare(String(x.date));
+    }).slice(0, 4);
+
+    var rows = feed.map(function (f) {
+      var it = f.item;
+      return entryRow({
+        date: it.date,
+        kind: f.kind,
+        type: it.type,
+        bvid: it.bvid,
+        url: it.url,
+        slug: it.slug,
+        title: it.title,
+        summary: it.summary || it.desc,
+        tags: it.tags
+      });
+    }).join("");
 
     var ongoing = PROGRESS.filter(function (p) { return (p.percent || 0) < 100; }).length;
-    var done = PROGRESS.length - ongoing;
 
     app.innerHTML =
-      '<div class="hero">' +
+      '<header class="hero">' +
+        '<p class="eyebrow">Digital Garden · ' + new Date().getFullYear() + "</p>" +
         '<h1 class="hero-name">' + esc(SITE.name) + "</h1>" +
-        '<p class="hero-role">' + esc(SITE.role) + " · " + esc(SITE.slogan) + "</p>" +
-        '<p class="hero-intro">' + esc(SITE.intro) + "</p>" +
-        '<div class="interest-row">' +
-          '<span class="interest-label">兴趣方向</span>' + tagsHtml(SITE.interests) +
+        '<p class="hero-lede">' + esc(SITE.intro) + "</p>" +
+        '<div class="hero-foot">' +
+          '<div class="hero-tags">' +
+            (SITE.interests || []).map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") +
+          "</div>" +
+          '<div class="hero-stats">' +
+            "<span><b>" + pad2(ARTICLES.length) + "</b>篇文章</span>" +
+            (VIDEOS.length ? "<span><b>" + pad2(VIDEOS.length) + "</b>个视频</span>" : "") +
+            "<span><b>" + pad2(ongoing) + "</b>项进行中</span>" +
+          "</div>" +
         "</div>" +
-        '<div class="stat-row">' +
-          "<span><b>" + ARTICLES.length + "</b>篇文章</span>" +
-          "<span><b>" + VIDEOS.length + "</b>个视频</span>" +
-          "<span><b>" + ongoing + "</b>项进行中</span>" +
-          "<span><b>" + done + "</b>项已完成</span>" +
-        "</div>" +
-      "</div>" +
-      '<h2 class="section-title">最近更新</h2>' +
-      feed.map(function (f) { return f.html; }).join("") +
-      '<p class="result-note"><a href="#/articles">查看全部文章</a> · <a href="#/progress">看看进度看板</a></p>';
+      "</header>" +
+      '<div class="section-head"><h2>最近更新</h2>' +
+        '<a href="#/articles">全部文章 →</a></div>' +
+      '<div class="entry-list">' + rows + "</div>" +
+      '<p class="result-note"><a href="#/progress">看看进度看板 →</a></p>';
+
     setDocTitle("");
   }
 
-  function videoCardLite(v) {
-    var where = v.type === "bilibili"
-      ? '<a href="https://www.bilibili.com/video/' + esc(v.bvid) + '" target="_blank" rel="noopener">B 站观看</a>'
-      : '<a href="' + esc(v.url) + '" target="_blank" rel="noopener">前往观看</a>';
-    return '<article class="card article-card">' +
-      '<div class="card-meta">' + esc(v.date) + " · 视频</div>" +
-      '<h3 class="card-title">' + (v.type === "bilibili"
-        ? '<a href="https://www.bilibili.com/video/' + esc(v.bvid) + '" target="_blank" rel="noopener">' + esc(v.title) + "</a>"
-        : '<a href="' + esc(v.url) + '" target="_blank" rel="noopener">' + esc(v.title) + "</a>") +
-      "</h3>" +
-      (v.desc ? '<p class="card-summary">' + esc(v.desc) + "</p>" : "") +
-      '<div class="card-tags">' + tagsHtml(v.tags) + " · " + where + "</div>" +
-      "</article>";
-  }
-
-  /* ---------- 页面：文章列表 ---------- */
+  /* ---------- 文章列表 ---------- */
   function pageArticles(query) {
     var allTags = [];
     ARTICLES.forEach(function (a) {
@@ -123,97 +207,116 @@
       : ARTICLES;
 
     app.innerHTML =
+      '<p class="page-kicker">Articles · ' + pad2(ARTICLES.length) + " 篇</p>" +
       '<h1 class="page-title">文章</h1>' +
-      '<p class="page-sub">共 ' + ARTICLES.length + " 篇" +
-        (activeTag ? " · 当前筛选标签：" + esc(activeTag) : "") + "</p>" +
+      '<p class="page-sub">学习笔记、随笔与项目记录。按日期倒序排列，点标签可以只看一类。</p>' +
       '<div class="filter-bar">' +
         '<a class="tag' + (activeTag ? "" : " on") + '" href="#/articles">全部</a>' +
-        allTags.map(function (t) {
-          return '<a class="tag' + (t === activeTag ? " on" : "") +
-            '" href="#/articles?tag=' + encodeURIComponent(t) + '">' + esc(t) + "</a>";
-        }).join("") +
+        tagLinks(allTags, activeTag) +
       "</div>" +
-      (list.length
-        ? list.map(articleCard).join("")
-        : '<p class="search-empty">这个标签下暂时没有文章。</p>');
+      '<div class="entry-list">' +
+        (list.length
+          ? list.map(entryRow).join("")
+          : '<p class="search-empty">这个标签下暂时没有文章。</p>') +
+      "</div>";
     setDocTitle("文章");
   }
 
-  /* ---------- 页面：文章详情 ---------- */
+  /* ---------- 文章详情 ---------- */
   function pageArticle(slug) {
     var idx = -1;
     for (var k = 0; k < ARTICLES.length; k++) {
       if (ARTICLES[k].slug === slug) { idx = k; break; }
     }
     if (idx < 0) {
-      app.innerHTML = '<h1 class="page-title">没有这篇文章</h1>' +
-        '<p class="page-sub">可能链接有误，<a href="#/articles">回到文章列表</a>。</p>';
-      setDocTitle("404");
+      app.innerHTML = '<p class="page-kicker">404</p>' +
+        '<h1 class="page-title">没有这篇文章</h1>' +
+        '<p class="page-sub">链接可能已失效，<a href="#/articles">回到文章列表</a>。</p>';
+      setDocTitle("没有这篇文章");
       return;
     }
+
     var a = ARTICLES[idx];
-    var prev = ARTICLES[idx + 1]; // 列表按日期倒序，idx+1 是更早一篇
-    var next = ARTICLES[idx - 1];
+    var prev = ARTICLES[idx + 1]; // 日期更早
+    var next = ARTICLES[idx - 1]; // 日期更新
+    var words = readingWords(a.content);
+    var minutes = Math.max(1, Math.round(words / 400));
 
     app.innerHTML =
-      '<article class="article-detail">' +
-        '<div class="card-meta">' + esc(a.date) + "</div>" +
-        '<h1 class="article-h1">' + esc(a.title) + "</h1>" +
-        '<div class="card-tags">' + tagsHtml(a.tags) + "</div>" +
-        '<div class="article-body">' + window.MdRender(a.content || "") + "</div>" +
-        '<hr class="sep">' +
-        '<div class="article-nav">' +
-          (prev ? '<a class="prev" href="#/article/' + encodeURIComponent(prev.slug) + '">← 较早：' + esc(prev.title) + "</a>" : "<span></span>") +
-          (next ? '<a class="next" href="#/article/' + encodeURIComponent(next.slug) + '">较新：' + esc(next.title) + " →</a>" : "<span></span>") +
-        "</div>" +
+      '<article class="post">' +
+        '<header class="post-head">' +
+          '<p class="page-kicker">' + (a.tags || []).map(esc).join(" / ") + "</p>" +
+          '<h1 class="post-title">' + esc(a.title) + "</h1>" +
+          '<p class="post-meta">' +
+            '<span>' + esc(dots(a.date)) + "</span>" +
+            '<span class="dot">·</span><span>约 ' + words + " 字</span>" +
+            '<span class="dot">·</span><span>' + minutes + " 分钟</span>" +
+          "</p>" +
+        "</header>" +
+        '<div class="post-body">' + window.MdRender(a.content || "") + "</div>" +
+        '<nav class="post-foot" aria-label="文章导航">' +
+          (prev
+            ? '<a class="prev" href="#/article/' + encodeURIComponent(prev.slug) + '">' +
+              '<span class="k">较早</span><span class="t">' + esc(prev.title) + "</span></a>"
+            : "<span></span>") +
+          (next
+            ? '<a class="next" href="#/article/' + encodeURIComponent(next.slug) + '">' +
+              '<span class="k">较新</span><span class="t">' + esc(next.title) + "</span></a>"
+            : "<span></span>") +
+        "</nav>" +
       "</article>" +
       '<p class="result-note"><a href="#/articles">← 返回文章列表</a></p>';
     setDocTitle(a.title);
   }
 
-  /* ---------- 页面：视频 ---------- */
-  function videoCardHtml(v) {
+  /* ---------- 视频 ---------- */
+  function videoCard(v) {
+    // 有封面用封面；没有封面就留白，标题只在下方面板出现一次
+    var cover = v.cover
+      ? '<img class="cover" src="' + esc(v.cover) + '" alt="' + esc(v.title) + '" loading="lazy">'
+      : "";
+
+    var info = '<div class="video-info">' +
+      '<h3 class="entry-title">' + esc(v.title) + "</h3>" +
+      (v.desc ? '<p class="video-desc">' + esc(v.desc) + "</p>" : "") +
+      '<div class="video-meta"><span>' + esc(dots(v.date)) + "</span>" +
+        (v.tags || []).map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") +
+      "</div>" +
+    "</div>";
+
     if (v.type === "link") {
-      return '<div class="video-card video-link-card">' +
-        '<a href="' + esc(v.url) + '" target="_blank" rel="noopener" class="video-frame">' +
-          (v.cover
-            ? '<img class="cover" src="' + esc(v.cover) + '" alt="' + esc(v.title) + '" loading="lazy">'
-            : '<div class="video-cover-title">' + esc(v.title) + "</div>") +
-          '<span class="external-hint">↗ 前往观看</span>' +
-        "</a>" +
-        '<div class="video-info">' +
-          '<div class="card-meta">' + esc(v.date) + " · 外部链接</div>" +
-          '<h3 class="card-title">' + esc(v.title) + "</h3>" +
-          (v.desc ? '<p class="video-desc">' + esc(v.desc) + "</p>" : "") +
-          '<div class="card-tags">' + tagsHtml(v.tags) + "</div>" +
-        "</div>" +
-      "</div>";
+      return '<a class="video-card video-link-card" href="' + esc(v.url) +
+        '" target="_blank" rel="noopener">' +
+        '<div class="video-frame">' + cover +
+          '<span class="link-ring">↗</span>' +
+          '<span class="external-hint">外部链接</span></div>' +
+        info +
+      "</a>";
     }
-    // bilibili 类型
+
     return '<div class="video-card">' +
-      '<div class="video-frame" data-bvid="' + esc(v.bvid) + '">' +
-        (v.cover
-          ? '<img class="cover" src="' + esc(v.cover) + '" alt="' + esc(v.title) + '" loading="lazy">'
-          : '<div class="video-cover-title">' + esc(v.title) + "</div>") +
-        '<button class="video-play" type="button">' +
-          '<span class="play-triangle"></span>点击播放</button>' +
+      '<div class="video-frame" data-bvid="' + esc(v.bvid) + '">' + cover +
+        '<button class="video-play" type="button" aria-label="播放：' + esc(v.title) + '">' +
+          '<span class="play-ring"><span class="play-triangle"></span></span>' +
+          "<span>播放</span>" +
+        "</button>" +
       "</div>" +
-      '<div class="video-info">' +
-        '<div class="card-meta">' + esc(v.date) + " · B 站</div>" +
-        '<h3 class="card-title">' + esc(v.title) + "</h3>" +
-        (v.desc ? '<p class="video-desc">' + esc(v.desc) + "</p>" : "") +
-        '<div class="card-tags">' + tagsHtml(v.tags) + "</div>" +
-      "</div>" +
+      info +
     "</div>";
   }
 
   function pageVideos() {
-    app.innerHTML =
-      '<h1 class="page-title">视频</h1>' +
-      '<p class="page-sub">共 ' + VIDEOS.length + " 个 · 点击卡片内嵌播放 B 站视频</p>" +
-      '<div class="video-grid">' + VIDEOS.map(videoCardHtml).join("") + "</div>";
+    var hasVideos = VIDEOS.length > 0;
 
-    // 点击后懒加载 iframe（避免一页塞多个播放器拖慢加载）
+    app.innerHTML =
+      '<p class="page-kicker">Videos · ' + pad2(VIDEOS.length) + " 个</p>" +
+      '<h1 class="page-title">视频</h1>' +
+      (hasVideos
+        ? '<p class="page-sub">点击卡片内嵌播放 B 站视频，播放器只在点击后加载。</p>' +
+          '<div class="video-grid">' + VIDEOS.map(videoCard).join("") + "</div>"
+        : '<p class="page-sub">视频还在录，先空着。等有第一条了就放上来。</p>' +
+          '<p class="search-empty">这里暂时没有视频。</p>');
+
     app.querySelectorAll(".video-frame[data-bvid]").forEach(function (frame) {
       frame.addEventListener("click", function () {
         var bvid = frame.getAttribute("data-bvid");
@@ -227,64 +330,69 @@
     setDocTitle("视频");
   }
 
-  /* ---------- 页面：进度看板 ---------- */
-  function progressItemHtml(p) {
+  /* ---------- 进度看板 ---------- */
+  function recordRow(p) {
     var pct = Math.max(0, Math.min(100, Number(p.percent) || 0));
     var done = pct >= 100;
-    return '<div class="progress-item">' +
-      '<div class="progress-head">' +
-        '<span class="progress-name">' + esc(p.name) + "</span>" +
-        '<span class="progress-pct' + (done ? " done" : "") + '">' + pct + "%</span>" +
+
+    return '<div class="record">' +
+      '<div class="record-pct' + (done ? " is-done" : "") + '">' + pct + "<span>%</span></div>" +
+      '<div class="record-main">' +
+        '<div class="record-head">' +
+          '<h3 class="record-name">' + esc(p.name) + "</h3>" +
+          (done ? '<span class="record-done">DONE</span>' : "") +
+        "</div>" +
+        '<div class="bar"><span style="width:' + pct + '%"></span></div>' +
+        '<div class="record-meta"><span>' + esc(p.time) + "</span>" +
+          (p.tags || []).map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") +
+        "</div>" +
+        (p.note ? '<p class="record-note">' + esc(p.note) + "</p>" : "") +
       "</div>" +
-      '<div class="progress-bar"><div class="progress-fill' + (done ? " done" : "") +
-        '" style="width:' + pct + '%"></div></div>' +
-      '<div class="progress-meta">' +
-        "<span>" + esc(p.time) + "</span>" +
-        (p.tags || []).map(function (t) { return '<span class="tag">' + esc(t) + "</span>"; }).join("") +
-      "</div>" +
-      (p.note ? '<p class="progress-note">' + esc(p.note) + "</p>" : "") +
     "</div>";
   }
 
   function pageProgress() {
-    var done = PROGRESS.filter(function (p) { return (p.percent || 0) >= 100; });
-    var ongoing = PROGRESS.filter(function (p) { return (p.percent || 0) < 100; });
-    // 成长轨迹：按记录内 time 字段排序，从早到晚，读下来就是时间线
-    var timeline = PROGRESS.slice().sort(function (a, b) {
-      return String(a.time).localeCompare(String(b.time));
-    });
+    var doneCount = PROGRESS.filter(function (p) { return (Number(p.percent) || 0) >= 100; }).length;
+    var ongoing = PROGRESS.length - doneCount;
     var avg = PROGRESS.length
       ? Math.round(PROGRESS.reduce(function (s, p) { return s + (Number(p.percent) || 0); }, 0) / PROGRESS.length)
       : 0;
 
+    // 按 time 字段正序，读下来就是一条从早到晚的轨迹
+    var timeline = PROGRESS.slice().sort(function (a, b) {
+      return String(a.time).localeCompare(String(b.time));
+    });
+
     app.innerHTML =
+      '<p class="page-kicker">Progress · ' + pad2(PROGRESS.length) + " 条记录</p>" +
       '<h1 class="page-title">进度看板</h1>' +
-      '<p class="page-sub">项目与学习任务的成长轨迹，从早到晚</p>' +
-      '<div class="progress-summary">' +
-        '<div class="summary-box"><b>' + PROGRESS.length + "</b><span>总记录</span></div>" +
-        '<div class="summary-box"><b>' + ongoing.length + "</b><span>进行中</span></div>" +
-        '<div class="summary-box"><b>' + done.length + "</b><span>已完成</span></div>" +
-        '<div class="summary-box"><b>' + avg + "%</b><span>平均进度</span></div>" +
+      '<p class="page-sub">项目与学习任务按开始时间排列。数字是进度，横线是距离。</p>' +
+      '<div class="board-summary">' +
+        '<div class="board-cell"><b>' + pad2(PROGRESS.length) + "</b><span>总记录</span></div>" +
+        '<div class="board-cell"><b>' + pad2(ongoing) + "</b><span>进行中</span></div>" +
+        '<div class="board-cell"><b>' + pad2(doneCount) + "</b><span>已完成</span></div>" +
+        '<div class="board-cell"><b>' + avg + "%</b><span>平均进度</span></div>" +
       "</div>" +
-      timeline.map(progressItemHtml).join("");
+      '<div class="record-list">' + timeline.map(recordRow).join("") + "</div>";
     setDocTitle("进度看板");
   }
 
-  /* ---------- 页面：搜索 ---------- */
+  /* ---------- 搜索 ---------- */
   function pageSearch() {
     app.innerHTML =
+      '<p class="page-kicker">Search</p>' +
       '<h1 class="page-title">搜索</h1>' +
       '<input id="search-input" class="search-input" type="search" ' +
-        'placeholder="输入关键词，匹配标题、标签、摘要…" autocomplete="off">' +
-      '<p class="search-hint">实时匹配：文章（标题/标签/摘要）、视频（标题/标签/简介）、进度（名称/标签/备注）</p>' +
+        'placeholder="输入关键词…" autocomplete="off" aria-label="搜索关键词">' +
+      '<p class="search-hint">匹配范围：文章标题 / 标签 / 摘要，视频标题 / 简介，进度名称 / 备注</p>' +
       '<div id="search-results"></div>';
 
     var input = document.getElementById("search-input");
     var box = document.getElementById("search-results");
 
-    function hit(qLower, fields) {
+    function hit(q, fields) {
       for (var k = 0; k < fields.length; k++) {
-        if (String(fields[k] || "").toLowerCase().indexOf(qLower) >= 0) return true;
+        if (String(fields[k] || "").toLowerCase().indexOf(q) >= 0) return true;
       }
       return false;
     }
@@ -295,24 +403,34 @@
         box.innerHTML = '<p class="search-empty">输入关键词开始搜索。</p>';
         return;
       }
-      var arts = ARTICLES.filter(function (a) { return hit(q, [a.title, (a.tags || []).join(" "), a.summary]); });
-      var vids = VIDEOS.filter(function (v) { return hit(q, [v.title, (v.tags || []).join(" "), v.desc, v.bvid, v.url]); });
-      var progs = PROGRESS.filter(function (p) { return hit(q, [p.name, (p.tags || []).join(" "), p.note]); });
+
+      var arts = ARTICLES.filter(function (a) {
+        return hit(q, [a.title, (a.tags || []).join(" "), a.summary]);
+      });
+      var vids = VIDEOS.filter(function (v) {
+        return hit(q, [v.title, (v.tags || []).join(" "), v.desc, v.bvid, v.url]);
+      });
+      var progs = PROGRESS.filter(function (p) {
+        return hit(q, [p.name, (p.tags || []).join(" "), p.note]);
+      });
 
       if (!arts.length && !vids.length && !progs.length) {
-        box.innerHTML = '<p class="search-empty">没有找到与「' + esc(input.value.trim()) + "」相关的内容。</p>";
+        box.innerHTML = '<p class="search-empty">没有找到「' + esc(input.value.trim()) + "」相关内容。</p>";
         return;
       }
+
       box.innerHTML =
         (arts.length
-          ? '<h2 class="search-group-title">文章（' + arts.length + "）</h2>" + arts.map(articleCard).join("")
+          ? '<h2 class="search-group-title">文章 · ' + arts.length + "</h2>" +
+            '<div class="entry-list">' + arts.map(entryRow).join("") + "</div>"
           : "") +
         (vids.length
-          ? '<h2 class="search-group-title">视频（' + vids.length + "）</h2>" +
-            '<div class="video-grid">' + vids.map(videoCardHtml).join("") + "</div>"
+          ? '<h2 class="search-group-title">视频 · ' + vids.length + "</h2>" +
+            '<div class="video-grid">' + vids.map(videoCard).join("") + "</div>"
           : "") +
         (progs.length
-          ? '<h2 class="search-group-title">进度（' + progs.length + "）</h2>" + progs.map(progressItemHtml).join("")
+          ? '<h2 class="search-group-title">进度 · ' + progs.length + "</h2>" +
+            progs.map(recordRow).join("")
           : "");
     }
 
@@ -322,36 +440,34 @@
     setDocTitle("搜索");
   }
 
-  /* ---------- 页面：关于 ---------- */
+  /* ---------- 关于 ---------- */
   function pageAbout() {
     var c = SITE.contact || {};
-    var contactRows = [
-      c.email ? '<li>邮箱：<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a></li>" : "",
-      c.github ? '<li>GitHub：<a href="' + esc(c.github) + '" target="_blank" rel="noopener">' + esc(c.github) + "</a></li>" : "",
-      c.bilibili ? '<li>B 站：<a href="' + esc(c.bilibili) + '" target="_blank" rel="noopener">' + esc(c.bilibili) + "</a></li>" : "",
-      c.mp ? "<li>" + esc(c.mp) + "</li>" : ""
+    var rows = [
+      c.email ? '<li><span class="k">Email</span><span><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a></span></li>" : "",
+      c.github ? '<li><span class="k">GitHub</span><span><a href="' + esc(c.github) + '" target="_blank" rel="noopener">' + esc(c.github) + "</a></span></li>" : "",
+      c.bilibili ? '<li><span class="k">Bilibili</span><span><a href="' + esc(c.bilibili) + '" target="_blank" rel="noopener">' + esc(c.bilibili) + "</a></span></li>" : "",
+      c.mp ? '<li><span class="k">公众号</span><span>' + esc(c.mp) + "</span></li>" : ""
     ].join("");
 
     app.innerHTML =
-      '<h1 class="page-title">关于我</h1>' +
-      '<p class="page-sub">' + esc(SITE.slogan) + "</p>" +
-      '<div class="about-section">' +
-        "<h2>" + esc(SITE.name) + "</h2>" +
-        "<p>" + esc(SITE.role) + "</p>" +
-        "<p>" + esc(SITE.intro) + "</p>" +
-        '<div class="card-tags" style="margin-top:10px">' + tagsHtml(SITE.interests) + "</div>" +
+      '<p class="page-kicker">About</p>' +
+      '<h1 class="page-title">' + esc(SITE.name) + "</h1>" +
+      '<p class="page-sub">' + esc(SITE.role) + " · " + esc(SITE.slogan) + "</p>" +
+      '<div class="about-block">' +
+        "<h2>简介</h2><p>" + esc(SITE.intro) + "</p>" +
+        '<div class="hero-tags">' +
+          (SITE.interests || []).map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") +
+        "</div>" +
       "</div>" +
-      '<div class="about-section">' +
-        "<h2>这座花园</h2>" +
-        "<ul class=\"about-list\">" +
-          "<li>纯静态站点，无数据库、无后端，数据即文件</li>" +
-          "<li>文章用 Markdown 书写，渲染在浏览器端完成</li>" +
-          "<li>所有代码开源可自由使用</li>" +
+      '<div class="about-block"><h2>这座花园</h2>' +
+        '<ul class="about-list">' +
+          '<li><span class="k">技术</span><span>纯静态页面，无数据库、无后端、无构建步骤</span></li>' +
+          '<li><span class="k">写作</span><span>Markdown 写在 content/ 里，浏览器端渲染</span></li>' +
+          '<li><span class="k">成本</span><span>零，托管在免费静态平台上</span></li>' +
         "</ul>" +
       "</div>" +
-      (contactRows
-        ? '<div class="about-section"><h2>找到我</h2><ul class="about-list">' + contactRows + "</ul></div>"
-        : "");
+      (rows ? '<div class="about-block"><h2>找到我</h2><ul class="about-list">' + rows + "</ul></div>" : "");
     setDocTitle("关于我");
   }
 
@@ -373,7 +489,6 @@
   function route() {
     var r = parseHash();
     var m;
-    app.scrollTop = 0;
     window.scrollTo(0, 0);
 
     if (r.path === "/" || r.path === "") { setNavActive("/"); pageHome(); }
@@ -385,10 +500,14 @@
     else if (r.path === "/about") { setNavActive("/about"); pageAbout(); }
     else {
       setNavActive("");
-      app.innerHTML = '<h1 class="page-title">页面不存在</h1>' +
+      app.innerHTML = '<p class="page-kicker">404</p>' +
+        '<h1 class="page-title">页面不存在</h1>' +
         '<p class="page-sub"><a href="#/">回到首页</a></p>';
-      setDocTitle("404");
+      setDocTitle("页面不存在");
     }
+
+    revealContent();
+    animateBars();
   }
 
   // 初始化站点标题与页脚

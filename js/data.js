@@ -19,10 +19,10 @@ window.SITE = {
 
   // 联系方式（关于页展示，留空字符串则不显示）
   contact: {
-    email: "you@example.com",
-    github: "https://github.com/yourname",
-    bilibili: "https://space.bilibili.com/12345678",
-    mp: "微信公众号：你的公众号名"
+    email: "anzong139@gmail.com",
+    github: "https://github.com/99999vvain",
+    bilibili: "",
+    mp: ""
   },
 
   // 页脚

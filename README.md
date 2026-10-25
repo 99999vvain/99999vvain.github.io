@@ -21,6 +21,7 @@ digital-garden/
 │   ├── videos.js         视频数据（B 站嵌入 / 外链卡片）
 │   └── progress.js       进度看板数据
 ├── assets/               （可选）封面图、图片等素材放这里
+├── DESIGN.md             视觉规则：配色、字号、间距、组件约定
 └── README.md             本文件
 ```
 
@@ -115,6 +116,7 @@ npx serve .
 |---|---|
 | 名字、简介、联系方式 | `js/data.js` |
 | 配色、字体、间距 | `css/style.css` 顶部的 `:root` 变量 |
+| 视觉规则（改样式前先看） | `DESIGN.md` |
 | 文章 | `content/articles.js` |
 | 视频 | `content/videos.js` |
 | 进度看板 | `content/progress.js` |
@@ -122,9 +124,11 @@ npx serve .
 配色变量示例（`css/style.css` 第一屏）：
 
 ```css
---bg: #f7f6f2;      /* 页面底色 */
---ink: #2b2a27;      /* 正文墨色 */
---accent: #44617a;   /* 点缀色：灰蓝，低饱和 */
+--canvas: #f6f4ee;   /* 页面纸底 */
+--ink:    #16140f;   /* 标题与正文 */
+--accent: #5d6342;   /* 橄榄墨：链接、进度、强调 */
+--marker: #f0ecb6;   /* 荧光笔：选中与加粗底纹 */
 ```
 
-改这三个变量就能整体换气质，其余全部自动跟随。
+改这四个变量就能整体换气质，其余全部自动跟随。
+**注意**：整站只允许一个强调色，加第二种颜色会立刻失去现在的克制感。
