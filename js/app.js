@@ -167,11 +167,21 @@
 
     var ongoing = PROGRESS.filter(function (p) { return (p.percent || 0) < 100; }).length;
 
+    var photo = SITE.avatar
+      ? '<figure class="hero-photo"><img src="' + esc(SITE.avatar) +
+        '" alt="' + esc(SITE.avatarAlt || SITE.name) + '" decoding="async"></figure>'
+      : "";
+
     app.innerHTML =
       '<header class="hero">' +
-        '<p class="eyebrow">Digital Garden · ' + new Date().getFullYear() + "</p>" +
-        '<h1 class="hero-name">' + esc(SITE.name) + "</h1>" +
-        '<p class="hero-lede">' + esc(SITE.intro) + "</p>" +
+        '<div class="hero-grid' + (photo ? " has-photo" : "") + '">' +
+          '<div class="hero-main">' +
+            '<p class="eyebrow">Digital Garden · ' + new Date().getFullYear() + "</p>" +
+            '<h1 class="hero-name">' + esc(SITE.name) + "</h1>" +
+            '<p class="hero-lede">' + esc(SITE.intro) + "</p>" +
+          "</div>" +
+          photo +
+        "</div>" +
         '<div class="hero-foot">' +
           '<div class="hero-tags">' +
             (SITE.interests || []).map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") +
@@ -460,6 +470,12 @@
       '<p class="page-kicker">About</p>' +
       '<h1 class="page-title">' + esc(SITE.name) + "</h1>" +
       '<p class="page-sub">' + esc(SITE.role) + " · " + esc(SITE.slogan) + "</p>" +
+      (SITE.avatar
+        ? '<figure class="about-photo"><img src="' + esc(SITE.avatar) +
+          '" alt="' + esc(SITE.avatarAlt || SITE.name) + '" decoding="async">' +
+          (SITE.avatarAlt ? "<figcaption>" + esc(SITE.avatarAlt) + "</figcaption>" : "") +
+          "</figure>"
+        : "") +
       '<div class="about-block">' +
         "<h2>简介</h2><p>" + esc(SITE.intro) + "</p>" +
         '<div class="hero-tags">' +

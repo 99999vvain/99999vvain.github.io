@@ -17,6 +17,10 @@ window.SITE = {
   // 兴趣方向（会以标签形式展示在首页）
   interests: ["理工科", "学习记录", "随笔", "项目记录"],
 
+  // 照片（首页右侧 + 关于页各显示一次）。路径留空 "" 则两处都不显示照片。
+  avatar: "assets/track-shadow.jpg",
+  avatarAlt: "跑道上的影子",
+
   // 联系方式（关于页展示，留空字符串则不显示）
   // 邮箱刻意拆成两段存，渲染时才拼起来：静态页里的完整明文邮箱是爬虫最爱抓的东西。
   // 想改邮箱就分别改 emailUser / emailDomain 两段，不要写成一整串。
@@ -25,7 +29,7 @@ window.SITE = {
     emailDomain: "gmail.com",
     github: "https://github.com/99999vvain",
     bilibili: "",
-    mp: ""
+    mp: "微信公众号：拓扑人生"
   },
 
   // 页脚

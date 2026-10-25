@@ -273,6 +273,24 @@ main {
   margin-right: 3px;
 }
 
+/* 首页照片：有图时右侧窄栏，无图时整块就是原来的单列 */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+.hero-grid.has-photo {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 236px);
+  gap: 0 clamp(24px, 4vw, 48px);
+  align-items: start;
+}
+.hero-photo { margin: 8px 0 0; }
+.hero-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: center 32%;
+  border: 1px solid var(--line);
+  filter: saturate(0.92);
+}
+
 /* ---------------- 条目列表（首页 / 文章 / 搜索） ---------------- */
 .entry-list { margin: 0; }
 
@@ -844,6 +862,22 @@ main {
   max-width: 58ch;
   text-wrap: pretty;
 }
+.about-photo { margin: 0 0 30px; max-width: 148px; }
+.about-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  object-position: center 30%;
+  border: 1px solid var(--line);
+  filter: saturate(0.92);
+}
+.about-photo figcaption {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--meta);
+}
+
 .about-list {
   list-style: none;
   padding: 0;
@@ -950,6 +984,11 @@ main {
   .video-grid { grid-template-columns: 1fr; gap: 24px; }
 
   .hero-foot { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .hero-grid.has-photo {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .hero-photo { max-width: 176px; margin-top: 0; }
   .about-list li { grid-template-columns: 1fr; gap: 2px; }
 }
 

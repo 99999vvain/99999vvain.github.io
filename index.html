@@ -6,7 +6,9 @@
   <title>V 的数字花园</title>
   <meta name="description" content="V 的线上知识库、作品展示与成长记录站">
   <meta name="theme-color" content="#f6f4ee">
-  <link rel="stylesheet" href="css/style.css?v=20261025c">
+  <link rel="stylesheet" href="css/style.css?v=20261025d">
+  <!-- 首页照片预加载：脚本把图注入页面，提前拉一遍避免首屏空档 -->
+  <link rel="preload" as="image" href="assets/track-shadow.jpg">
 </head>
 <body>
 
@@ -36,13 +38,13 @@
   </footer>
 
   <!-- 数据层：先于应用脚本加载 -->
-  <script src="js/data.js?v=20261025c"></script>
-  <script src="content/articles.js?v=20261025c"></script>
-  <script src="content/videos.js?v=20261025c"></script>
-  <script src="content/progress.js?v=20261025c"></script>
+  <script src="js/data.js?v=20261025d"></script>
+  <script src="content/articles.js?v=20261025d"></script>
+  <script src="content/videos.js?v=20261025d"></script>
+  <script src="content/progress.js?v=20261025d"></script>
 
   <!-- 应用层 -->
-  <script src="js/markdown.js?v=20261025c"></script>
-  <script src="js/app.js?v=20261025c"></script>
+  <script src="js/markdown.js?v=20261025d"></script>
+  <script src="js/app.js?v=20261025d"></script>
 </body>
 </html>
