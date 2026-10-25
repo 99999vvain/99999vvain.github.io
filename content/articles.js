@@ -146,10 +146,10 @@ window.DB_ARTICLES = [
   },
 
   {
-    slug: "kaoyan-math-mistakes",
-    title: "考研数学：错题本的正确打开方式",
+    slug: "math-mistake-notes",
+    title: "数学复习：错题本的正确打开方式",
     date: "2026-08-10",
-    tags: ["考研", "方法"],
+    tags: ["数学", "方法"],
     summary: "错题本不是抄题本。抄题是搬运，复盘才是加工。记录格式和回顾节奏。",
     content: [
       "# 错题本不是抄题本",
